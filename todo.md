@@ -80,3 +80,16 @@
 
 ## Known Issues & Improvements
 - (none yet)
+
+## Uptime & Availability Monitoring (NEW)
+- [x] Create device_availability table to track up/down history with timestamps
+- [x] Create api_errors table to track API failures separately from device state
+- [x] Implement availability tracking service to record device state changes
+- [x] Build uptime calculation engine for different periods (minutes, hours, days, month)
+- [x] Create availability report endpoint with period filtering
+- [x] Distinguish between device downtime and API unavailability in reports
+- [x] Build availability indicator component (percentage badge)
+- [x] Create period selector (last 5 min, 1 hour, 24 hours, 7 days, 30 days)
+- [ ] Implement availability chart showing up/down timeline
+- [x] Build detailed outage report showing duration and cause
+- [x] Add availability metrics to device detail page

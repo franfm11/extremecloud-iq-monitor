@@ -11,6 +11,7 @@ import DeviceDetail from "./pages/DeviceDetail";
 import Clients from "./pages/Clients";
 import Diagnostics from "./pages/Diagnostics";
 import Alerts from "./pages/Alerts";
+import Availability from "./pages/Availability";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path={"/clients"} component={Clients} />
       <Route path={"/diagnostics"} component={Diagnostics} />
       <Route path={"/alerts"} component={Alerts} />
+      <Route path={"/availability/:id"} component={Availability} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

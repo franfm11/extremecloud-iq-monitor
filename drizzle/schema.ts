@@ -134,3 +134,39 @@ export const cliCommands = mysqlTable("cli_commands", {
 
 export type CliCommand = typeof cliCommands.$inferSelect;
 export type InsertCliCommand = typeof cliCommands.$inferInsert;
+
+/**
+ * Device availability history.
+ * Tracks up/down state changes for each device with timestamps.
+ */
+export const deviceAvailability = mysqlTable("device_availability", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  deviceId: varchar("deviceId", { length: 100 }).notNull(),
+  status: mysqlEnum("status", ["up", "down"]).notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  durationSeconds: int("durationSeconds"),
+  reason: varchar("reason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DeviceAvailability = typeof deviceAvailability.$inferSelect;
+export type InsertDeviceAvailability = typeof deviceAvailability.$inferInsert;
+
+/**
+ * API error tracking.
+ * Tracks when API calls fail, separate from device state.
+ */
+export const apiErrors = mysqlTable("api_errors", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  endpoint: varchar("endpoint", { length: 255 }).notNull(),
+  errorCode: varchar("errorCode", { length: 50 }),
+  errorMessage: text("errorMessage"),
+  statusCode: int("statusCode"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ApiError = typeof apiErrors.$inferSelect;
+export type InsertApiError = typeof apiErrors.$inferInsert;

@@ -198,6 +198,13 @@ export default function DeviceDetail() {
                     <Zap className="w-4 h-4" />
                     Run Diagnostics on This Device
                   </Button>
+                  <Button
+                    onClick={() => navigate(`/availability/${id}`)}
+                    variant="outline"
+                    className="w-full gap-2"
+                  >
+                    View Availability Report
+                  </Button>
                 </CardContent>
               </Card>
             </>

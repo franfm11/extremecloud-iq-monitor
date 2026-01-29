@@ -15,6 +15,13 @@
       "when": 1769728069712,
       "tag": "0001_green_natasha_romanoff",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1769729729881,
+      "tag": "0002_productive_zuras",
+      "breakpoints": true
     }
   ]
 }

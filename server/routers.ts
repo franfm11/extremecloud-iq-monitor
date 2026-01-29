@@ -4,6 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { extremeCloudService } from "./services/extremecloud.service";
+import { availabilityRouter } from "./routers/availability";
 import {
   getLatestApiToken,
   saveApiToken,
@@ -463,7 +464,8 @@ export const appRouter = router({
       .query(async ({ input, ctx }) => {
         return await getUserCliCommands(ctx.user.id, input.deviceId, input.limit);
       }),
-  }),
-});
+   }),
 
+  availability: availabilityRouter,
+});
 export type AppRouter = typeof appRouter;
