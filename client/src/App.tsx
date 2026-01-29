@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Devices from "./pages/Devices";
+import DeviceDetail from "./pages/DeviceDetail";
 import Clients from "./pages/Clients";
 import Diagnostics from "./pages/Diagnostics";
 import Alerts from "./pages/Alerts";
@@ -17,6 +18,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/login"} component={Login} />
       <Route path={"/devices"} component={Devices} />
+      <Route path={"/device/:id"} component={DeviceDetail} />
       <Route path={"/clients"} component={Clients} />
       <Route path={"/diagnostics"} component={Diagnostics} />
       <Route path={"/alerts"} component={Alerts} />

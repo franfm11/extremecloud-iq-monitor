@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 interface Device {
   id: number;
+  deviceId?: string;
   hostname?: string;
   mac_address?: string;
   ip_address?: string;
@@ -181,18 +182,18 @@ export default function Devices() {
                             {device.software_version || "N/A"}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1"
-                              onClick={() => {
-                                // Navigate to device detail
-                                window.location.href = `/device/${device.id}`;
-                              }}
-                            >
-                              View
-                              <ChevronRight className="w-4 h-4" />
-                            </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => {
+                              // Navigate to device detail using deviceId
+                              window.location.href = `/device/${device.deviceId || device.id}`;
+                            }}
+                          >
+                            View
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
                           </TableCell>
                         </TableRow>
                       ))}
