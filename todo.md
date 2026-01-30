@@ -96,3 +96,6 @@
 
 ## UI Improvements
 - [x] Add Uptime & Availability Monitoring to left sidebar navigation
+
+## Bug Fixes
+- [x] Fix Availability Overview showing all zeros - integrated automatic state recording into device sync

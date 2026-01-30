@@ -4,6 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { extremeCloudService } from "./services/extremecloud.service";
+import { recordDeviceStateChange } from "./services/availability.service";
 import { availabilityRouter } from "./routers/availability";
 import {
   getLatestApiToken,
@@ -129,7 +130,7 @@ export const appRouter = router({
           throw new Error(apiResponse.message || "Failed to fetch devices");
         }
 
-        // Cache devices in database
+        // Cache devices in database and record state changes
         if (apiResponse.data && Array.isArray(apiResponse.data)) {
           for (const device of apiResponse.data) {
             await upsertDevice({
@@ -147,6 +148,15 @@ export const appRouter = router({
               managedStatus: device.device_admin_state,
               rawData: device,
             });
+
+            // Record device state for availability tracking
+            const status = device.connected ? "up" : "down";
+            await recordDeviceStateChange(
+              ctx.user.id,
+              String(device.id),
+              status,
+              device.connected ? "Device is connected" : "Device is disconnected"
+            );
           }
         }
 
@@ -175,7 +185,7 @@ export const appRouter = router({
           throw new Error(apiResponse.message || "Failed to fetch device details");
         }
 
-        // Cache in database
+        // Cache in database and record state
         if (apiResponse.data) {
           const device = apiResponse.data;
           await upsertDevice({
@@ -193,6 +203,15 @@ export const appRouter = router({
             managedStatus: device.device_admin_state,
             rawData: device,
           });
+
+          // Record device state for availability tracking
+          const status = device.connected ? "up" : "down";
+          await recordDeviceStateChange(
+            ctx.user.id,
+            String(device.id),
+            status,
+            device.connected ? "Device is connected" : "Device is disconnected"
+          );
         }
 
         return apiResponse.data;
