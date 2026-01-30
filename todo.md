@@ -112,3 +112,6 @@
 - [x] Fix uptime showing 100% in device detail reports - same fix applied
 - [x] Debug getDevicesStats endpoint - fixed to calculate duration correctly
 - [x] Debug getAvailabilityReport endpoint - fixed to calculate duration correctly
+
+## UI Improvements (Current)
+- [x] Add device name filter field to Availability Overview

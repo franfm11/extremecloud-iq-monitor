@@ -15,10 +15,12 @@ import {
 } from "@/components/ui/table";
 import { Loader2, AlertCircle, TrendingUp, Eye } from "lucide-react";
 import { useLocation } from "wouter";
+import { Input } from "@/components/ui/input";
 
 export default function AvailabilityOverview() {
   const [, navigate] = useLocation();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>("24h");
+  const [deviceNameFilter, setDeviceNameFilter] = useState("");
 
   // Fetch availability statistics for all devices
   const { data: stats, isLoading, error, refetch } = trpc.availability.getDevicesStats.useQuery(
@@ -40,8 +42,13 @@ export default function AvailabilityOverview() {
     };
   }) ?? [];
 
-  // Sort by uptime percentage
-  const sortedDevices = [...deviceStats].sort(
+  // Filter by device name and sort by uptime percentage
+  const filteredDevices = deviceStats.filter((device: any) =>
+    device.hostname?.toLowerCase().includes(deviceNameFilter.toLowerCase()) ||
+    device.deviceId?.toLowerCase().includes(deviceNameFilter.toLowerCase())
+  );
+
+  const sortedDevices = [...filteredDevices].sort(
     (a: any, b: any) => a.uptimePercentage - b.uptimePercentage
   );
 
@@ -62,18 +69,34 @@ export default function AvailabilityOverview() {
             </p>
           </div>
 
-          {/* Period Selector */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Time Period</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PeriodSelector
-                selectedPeriod={selectedPeriod}
-                onPeriodChange={setSelectedPeriod}
-              />
-            </CardContent>
-          </Card>
+          {/* Period Selector and Filter */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Select Time Period</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PeriodSelector
+                  selectedPeriod={selectedPeriod}
+                  onPeriodChange={setSelectedPeriod}
+                />
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Filter by Device Name</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Input
+                  placeholder="Search device name or ID..."
+                  value={deviceNameFilter}
+                  onChange={(e) => setDeviceNameFilter(e.target.value)}
+                  className="w-full"
+                />
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Loading State */}
           {isLoading && (
