@@ -7,6 +7,7 @@ import { extremeCloudService } from "./services/extremecloud.service";
 import { recordDeviceStateChange, recordApiError } from "./services/availability.service";
 import { availabilityRouter } from "./routers/availability";
 import { advancedAvailabilityRouter } from "./routers/advanced-availability";
+import { reportExportRouter } from "./routers/report-export";
 import {
   getLatestApiToken,
   saveApiToken,
@@ -27,6 +28,7 @@ export const appRouter = router({
   system: systemRouter,
 
   advanced: advancedAvailabilityRouter,
+  reports: reportExportRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

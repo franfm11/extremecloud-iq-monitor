@@ -130,3 +130,12 @@
 - [ ] Update availability reports to include event counts and flapping detection
 - [ ] Create admin UI for polling configuration and planned downtime management
 - [x] Add comprehensive tests for new features (19 tests, all passing)
+
+
+## Report Export Feature (NEW)
+- [x] Create report generation service for CSV export
+- [x] Create report generation service for PDF export
+- [x] Add tRPC endpoints for CSV export
+- [x] Add tRPC endpoints for PDF export
+- [ ] Build export UI button and dialog
+- [x] Test export functionality (all 71 tests passing)
