@@ -106,3 +106,9 @@
 - [x] Track API errors separately from device state changes
 - [x] Implement UNKNOWN status for devices when API unavailable and no recent data
 - [x] Update availability calculation to account for API error periods
+
+## Critical Bugs - Availability Calculation
+- [x] Fix uptime showing 0% in Availability Overview - recalculate duration from consecutive timestamps
+- [x] Fix uptime showing 100% in device detail reports - same fix applied
+- [x] Debug getDevicesStats endpoint - fixed to calculate duration correctly
+- [x] Debug getAvailabilityReport endpoint - fixed to calculate duration correctly

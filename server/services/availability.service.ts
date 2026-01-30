@@ -1,20 +1,9 @@
+import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { getDb } from "../db";
-import { 
-  deviceAvailability, 
-  InsertDeviceAvailability,
-  apiErrors,
-  InsertApiError 
-} from "../../drizzle/schema";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { deviceAvailability, apiErrors } from "../../drizzle/schema";
 
-/**
- * Period type for availability reports
- */
 export type PeriodType = "5m" | "1h" | "24h" | "7d" | "30d";
 
-/**
- * Availability report data
- */
 export interface AvailabilityReport {
   deviceId: string;
   period: PeriodType;
@@ -33,9 +22,6 @@ export interface AvailabilityReport {
   currentStatus: "up" | "down" | "unknown";
 }
 
-/**
- * Get period duration in milliseconds
- */
 function getPeriodDuration(period: PeriodType): number {
   const durations: Record<PeriodType, number> = {
     "5m": 5 * 60 * 1000,
@@ -63,14 +49,12 @@ export async function recordDeviceStateChange(
   }
 
   try {
-    const data: InsertDeviceAvailability = {
+    await db.insert(deviceAvailability).values({
       userId,
       deviceId,
       status,
       reason,
-    };
-
-    await db.insert(deviceAvailability).values(data);
+    });
     console.log(`[Availability] Recorded ${status} state for device ${deviceId}`);
   } catch (error) {
     console.error("[Availability] Failed to record state change:", error);
@@ -94,15 +78,13 @@ export async function recordApiError(
   }
 
   try {
-    const data: InsertApiError = {
+    await db.insert(apiErrors).values({
       userId,
       endpoint,
       errorCode,
       errorMessage,
       statusCode,
-    };
-
-    await db.insert(apiErrors).values(data);
+    });
     console.log(`[Availability] Recorded API error for endpoint ${endpoint}`);
   } catch (error) {
     console.error("[Availability] Failed to record API error:", error);
@@ -205,7 +187,7 @@ export async function getAvailabilityReport(
 
       // Duration until next state change or end of period
       const endTime = next ? new Date(next.timestamp) : now;
-      const duration = (endTime.getTime() - current.timestamp.getTime()) / 1000;
+      const duration = (endTime.getTime() - new Date(current.timestamp).getTime()) / 1000;
 
       if (current.status === "up") {
         uptime += duration;
@@ -274,8 +256,7 @@ export async function getRecentOutages(
     .where(
       and(
         eq(deviceAvailability.userId, userId),
-        eq(deviceAvailability.deviceId, deviceId),
-        eq(deviceAvailability.status, "down")
+        eq(deviceAvailability.deviceId, deviceId)
       )
     )
     .orderBy(desc(deviceAvailability.timestamp))
@@ -304,8 +285,8 @@ export async function getDevicesAvailabilityStats(
   const now = new Date();
   const startTime = new Date(now.getTime() - periodMs);
 
-  // Get all devices for this user
-  const devices = await db
+  // Get all state changes for this user in the period, ordered by timestamp
+  const allChanges = await db
     .select()
     .from(deviceAvailability)
     .where(
@@ -313,23 +294,45 @@ export async function getDevicesAvailabilityStats(
         eq(deviceAvailability.userId, userId),
         gte(deviceAvailability.timestamp, startTime)
       )
-    );
+    )
+    .orderBy(deviceAvailability.timestamp);
 
-  // Group by device and calculate stats
+  // Group by device
+  const deviceChanges: Record<string, typeof allChanges> = {};
+  for (const change of allChanges) {
+    if (!deviceChanges[change.deviceId]) {
+      deviceChanges[change.deviceId] = [];
+    }
+    deviceChanges[change.deviceId].push(change);
+  }
+
+  // Calculate stats for each device
   const deviceStats: Record<string, { uptime: number; downtime: number; lastStatus: string }> = {};
 
-  for (const record of devices) {
-    if (!deviceStats[record.deviceId]) {
-      deviceStats[record.deviceId] = { uptime: 0, downtime: 0, lastStatus: "unknown" };
+  for (const [deviceId, changes] of Object.entries(deviceChanges)) {
+    let uptime = 0;
+    let downtime = 0;
+    let lastStatus = "unknown";
+
+    // Calculate duration between consecutive state changes
+    for (let i = 0; i < changes.length; i++) {
+      const current = changes[i];
+      const next = changes[i + 1];
+      
+      // Duration until next state change or end of period
+      const endTime = next ? new Date(next.timestamp) : now;
+      const duration = (endTime.getTime() - new Date(current.timestamp).getTime()) / 1000;
+
+      if (current.status === "up") {
+        uptime += duration;
+      } else if (current.status === "down") {
+        downtime += duration;
+      }
+
+      lastStatus = current.status;
     }
 
-    if (record.status === "up") {
-      deviceStats[record.deviceId].uptime += record.durationSeconds || 0;
-    } else {
-      deviceStats[record.deviceId].downtime += record.durationSeconds || 0;
-    }
-
-    deviceStats[record.deviceId].lastStatus = record.status;
+    deviceStats[deviceId] = { uptime, downtime, lastStatus };
   }
 
   return Object.entries(deviceStats).map(([deviceId, stats]) => ({
