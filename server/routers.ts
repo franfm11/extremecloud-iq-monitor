@@ -304,8 +304,19 @@ export const appRouter = router({
           deviceId: input.deviceId,
         });
 
+        // If API error, return cached clients instead of throwing
         if (apiResponse.error) {
-          throw new Error(apiResponse.message || "Failed to fetch clients");
+          console.warn("[Clients] API error fetching clients:", apiResponse.message);
+          // Try to return cached clients
+          const cachedClients = await getUserClients(ctx.user.id, input.page, input.limit);
+          return {
+            data: cachedClients,
+            page: input.page,
+            limit: input.limit,
+            total: cachedClients.length,
+            fromCache: true,
+            warning: "Showing cached data due to API error",
+          };
         }
 
         // Cache clients in database

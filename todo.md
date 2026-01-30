@@ -139,3 +139,7 @@
 - [x] Add tRPC endpoints for PDF export
 - [ ] Build export UI button and dialog
 - [x] Test export functionality (all 71 tests passing)
+
+
+## Current Bugs (Active)
+- [x] Fix "Failed to fetch clients" error on /availability/:deviceId page - added graceful error handling with cached fallback
