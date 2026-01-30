@@ -198,6 +198,14 @@ export const appRouter = router({
         const apiResponse = await extremeCloudService.getDeviceDetail(token.accessToken, input.deviceId);
 
         if (apiResponse.error) {
+          const cachedDevice = await getDeviceById(ctx.user.id, input.deviceId);
+          if (cachedDevice) {
+            return {
+              ...cachedDevice,
+              fromCache: true,
+              cacheWarning: apiResponse.message || "API unavailable, showing cached data",
+            };
+          }
           throw new Error(apiResponse.message || "Failed to fetch device details");
         }
 
@@ -230,7 +238,20 @@ export const appRouter = router({
           );
         }
 
-        return apiResponse.data;
+        if (apiResponse.data) {
+          return apiResponse.data;
+        }
+
+        const cachedDevice = await getDeviceById(ctx.user.id, input.deviceId);
+        if (cachedDevice) {
+          return {
+            ...cachedDevice,
+            fromCache: true,
+            cacheWarning: "API returned empty response, showing cached data",
+          };
+        }
+
+        throw new Error("Device not found and no cached data available");
       }),
 
     /**

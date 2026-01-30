@@ -115,3 +115,6 @@
 
 ## UI Improvements (Current)
 - [x] Add device name filter field to Availability Overview
+
+## Current Bugs
+- [x] Fix devices.detail endpoint returning undefined data - added fallback to cached device
