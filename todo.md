@@ -99,3 +99,10 @@
 
 ## Bug Fixes
 - [x] Fix Availability Overview showing all zeros - integrated automatic state recording into device sync
+
+## Availability Tracking Improvements
+- [x] Handle API failures gracefully without marking devices as DOWN
+- [x] Use last_connect_time to infer device state when API fails
+- [x] Track API errors separately from device state changes
+- [x] Implement UNKNOWN status for devices when API unavailable and no recent data
+- [x] Update availability calculation to account for API error periods

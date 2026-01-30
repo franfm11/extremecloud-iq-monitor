@@ -184,14 +184,15 @@ export default function AvailabilityOverview() {
                                       ? "bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300"
                                       : device.lastStatus === "down"
                                       ? "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300"
-                                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                                      : "bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300"
                                   }`}
+                                  title={device.lastStatus === "unknown" ? "API unavailable or no recent data" : ""}
                                 >
                                   {device.lastStatus === "up"
                                     ? "Online"
                                     : device.lastStatus === "down"
                                     ? "Offline"
-                                    : "Unknown"}
+                                    : "Unknown (API Error)"}
                                 </span>
                               </TableCell>
                               <TableCell>

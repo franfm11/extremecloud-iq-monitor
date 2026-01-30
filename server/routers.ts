@@ -4,7 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { extremeCloudService } from "./services/extremecloud.service";
-import { recordDeviceStateChange } from "./services/availability.service";
+import { recordDeviceStateChange, recordApiError } from "./services/availability.service";
 import { availabilityRouter } from "./routers/availability";
 import {
   getLatestApiToken,
@@ -113,7 +113,7 @@ export const appRouter = router({
           limit: z.number().int().positive().max(100).default(20),
         })
       )
-      .query(async ({ input, ctx }) => {
+      .query(async ({ input, ctx }): Promise<any> => {
         const token = await getLatestApiToken(ctx.user.id);
         if (!token || token.expiresAt < new Date()) {
           throw new Error("No valid authentication token. Please login first.");
@@ -127,7 +127,23 @@ export const appRouter = router({
         });
 
         if (apiResponse.error) {
-          throw new Error(apiResponse.message || "Failed to fetch devices");
+          await recordApiError(
+            ctx.user.id,
+            "/devices/list",
+            "API_ERROR",
+            apiResponse.message || "Failed to fetch devices",
+            apiResponse.statusCode
+          );
+          
+          const cachedDevices = await getUserDevices(ctx.user.id, input.limit, (input.page - 1) * input.limit);
+          return {
+            data: cachedDevices || [],
+            page: input.page,
+            limit: input.limit,
+            total: cachedDevices?.length || 0,
+            fromCache: true,
+            error: apiResponse.message || "API unavailable, showing cached data",
+          };
         }
 
         // Cache devices in database and record state changes

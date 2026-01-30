@@ -165,7 +165,17 @@ export async function getAvailabilityReport(
     .orderBy(desc(deviceAvailability.timestamp))
     .limit(1);
 
-  const currentStatus = lastState.length > 0 ? lastState[0].status : "unknown";
+  let currentStatus: "up" | "down" | "unknown" = lastState.length > 0 ? (lastState[0].status as any) : "unknown";
+  
+  if (currentStatus === "down" && apiErrorsCount.length > 0) {
+    const lastApiError = apiErrorsCount[apiErrorsCount.length - 1];
+    const timeSinceLastError = now.getTime() - new Date(lastApiError.timestamp).getTime();
+    const fiveMinutesMs = 5 * 60 * 1000;
+    
+    if (timeSinceLastError < fiveMinutesMs) {
+      currentStatus = "unknown";
+    }
+  }
 
   // Calculate uptime and outages
   let uptime = 0;
@@ -186,6 +196,7 @@ export async function getAvailabilityReport(
     } else if (currentStatus === "down") {
       downtime = totalSeconds;
     }
+    // If UNKNOWN, don't count as uptime or downtime
   } else {
     // Process state changes to calculate uptime/downtime
     for (let i = 0; i < stateChanges.length; i++) {
