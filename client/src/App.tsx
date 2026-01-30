@@ -12,6 +12,7 @@ import Clients from "./pages/Clients";
 import Diagnostics from "./pages/Diagnostics";
 import Alerts from "./pages/Alerts";
 import Availability from "./pages/Availability";
+import AvailabilityOverview from "./pages/AvailabilityOverview";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path={"/diagnostics"} component={Diagnostics} />
       <Route path={"/alerts"} component={Alerts} />
       <Route path={"/availability/:id"} component={Availability} />
+      <Route path={"/availability"} component={AvailabilityOverview} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -93,3 +93,6 @@
 - [ ] Implement availability chart showing up/down timeline
 - [x] Build detailed outage report showing duration and cause
 - [x] Add availability metrics to device detail page
+
+## UI Improvements
+- [x] Add Uptime & Availability Monitoring to left sidebar navigation

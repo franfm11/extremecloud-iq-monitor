@@ -25,6 +25,7 @@ import {
   Menu,
   Network,
   Settings,
+  TrendingUp,
   Users,
   Zap,
   X,
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
   { label: "Clients", path: "/clients", icon: <Users className="w-5 h-5" /> },
   { label: "Diagnostics", path: "/diagnostics", icon: <Zap className="w-5 h-5" /> },
   { label: "Alerts", path: "/alerts", icon: <AlertTriangle className="w-5 h-5" /> },
+  { label: "Availability", path: "/availability", icon: <TrendingUp className="w-5 h-5" /> },
 ];
 
 export function DashboardNav() {
