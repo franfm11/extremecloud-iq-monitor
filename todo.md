@@ -118,3 +118,15 @@
 
 ## Current Bugs
 - [x] Fix devices.detail endpoint returning undefined data - added fallback to cached device
+
+
+## Advanced Availability Features (AirWave Parity)
+- [x] Extend database schema for polling config, downtime windows, and event counters
+- [x] Implement Background Polling Service (automatic polling every 5-10 min)
+- [x] Add Fast Polling Logic with exponential backoff retries
+- [x] Implement Event Counter to detect flapping (UP↔DOWN transitions)
+- [x] Add Planned Downtime windows with exclusion from uptime calculations
+- [x] Build Webhook/Trap Handler for immediate state change notifications
+- [ ] Update availability reports to include event counts and flapping detection
+- [ ] Create admin UI for polling configuration and planned downtime management
+- [x] Add comprehensive tests for new features (19 tests, all passing)

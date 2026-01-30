@@ -6,6 +6,7 @@ import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { extremeCloudService } from "./services/extremecloud.service";
 import { recordDeviceStateChange, recordApiError } from "./services/availability.service";
 import { availabilityRouter } from "./routers/availability";
+import { advancedAvailabilityRouter } from "./routers/advanced-availability";
 import {
   getLatestApiToken,
   saveApiToken,
@@ -24,6 +25,8 @@ import {
 
 export const appRouter = router({
   system: systemRouter,
+
+  advanced: advancedAvailabilityRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

@@ -170,3 +170,99 @@ export const apiErrors = mysqlTable("api_errors", {
 
 export type ApiError = typeof apiErrors.$inferSelect;
 export type InsertApiError = typeof apiErrors.$inferInsert;
+
+
+/**
+ * Polling configuration for automatic device monitoring.
+ * Stores polling intervals and retry settings per user.
+ */
+export const pollingConfig = mysqlTable("polling_config", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  pollingIntervalSeconds: int("pollingIntervalSeconds").default(300).notNull(),
+  fastPollingIntervalSeconds: int("fastPollingIntervalSeconds").default(30).notNull(),
+  fastPollingRetries: int("fastPollingRetries").default(3).notNull(),
+  enabled: int("enabled").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PollingConfig = typeof pollingConfig.$inferSelect;
+export type InsertPollingConfig = typeof pollingConfig.$inferInsert;
+
+/**
+ * Planned downtime windows for maintenance exclusion.
+ */
+export const plannedDowntime = mysqlTable("planned_downtime", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  deviceId: varchar("deviceId", { length: 100 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  startTime: timestamp("startTime").notNull(),
+  endTime: timestamp("endTime").notNull(),
+  recurring: varchar("recurring", { length: 50 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PlannedDowntime = typeof plannedDowntime.$inferSelect;
+export type InsertPlannedDowntime = typeof plannedDowntime.$inferInsert;
+
+/**
+ * Device availability events with detailed metrics.
+ */
+export const deviceAvailabilityEvents = mysqlTable("device_availability_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  deviceId: varchar("deviceId", { length: 100 }).notNull(),
+  eventType: mysqlEnum("eventType", ["up", "down", "flapping_detected"]).notNull(),
+  status: mysqlEnum("status", ["up", "down"]).notNull(),
+  startTime: timestamp("startTime").notNull(),
+  endTime: timestamp("endTime"),
+  durationSeconds: int("durationSeconds"),
+  reason: varchar("reason", { length: 255 }),
+  detectionMethod: varchar("detectionMethod", { length: 50 }),
+  retryAttempts: int("retryAttempts").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DeviceAvailabilityEvent = typeof deviceAvailabilityEvents.$inferSelect;
+export type InsertDeviceAvailabilityEvent = typeof deviceAvailabilityEvents.$inferInsert;
+
+/**
+ * Flapping detection and statistics.
+ */
+export const flappingEvents = mysqlTable("flapping_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  deviceId: varchar("deviceId", { length: 100 }).notNull(),
+  transitionCount: int("transitionCount").notNull(),
+  timeWindowSeconds: int("timeWindowSeconds").notNull(),
+  startTime: timestamp("startTime").notNull(),
+  endTime: timestamp("endTime").notNull(),
+  severity: mysqlEnum("severity", ["low", "medium", "high"]).notNull(),
+  acknowledged: int("acknowledged").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FlappingEvent = typeof flappingEvents.$inferSelect;
+export type InsertFlappingEvent = typeof flappingEvents.$inferInsert;
+
+/**
+ * Webhook endpoints for receiving SNMP traps and immediate notifications.
+ */
+export const webhookEndpoints = mysqlTable("webhook_endpoints", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  url: text("url").notNull(),
+  secret: varchar("secret", { length: 255 }),
+  enabled: int("enabled").default(1).notNull(),
+  lastTriggeredAt: timestamp("lastTriggeredAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type WebhookEndpoint = typeof webhookEndpoints.$inferSelect;
+export type InsertWebhookEndpoint = typeof webhookEndpoints.$inferInsert;
