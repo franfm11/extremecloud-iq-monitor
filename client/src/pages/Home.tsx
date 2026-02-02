@@ -19,12 +19,12 @@ export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, navigate]);
+  // Skip authentication check - allow direct access
+  // useEffect(() => {
+  //   if (!isAuthenticated) {
+  //     navigate("/login");
+  //   }
+  // }, [isAuthenticated, navigate]);
 
   // Check if user has valid token
   const { data: tokenStatus } = trpc.extremecloud.hasValidToken.useQuery();
@@ -54,9 +54,10 @@ export default function Home() {
   const criticalAlerts = alerts.filter((a: any) => a.severity === "critical").length;
   const connectedClients = clients.filter((c: any) => c.connected).length;
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  // Skip authentication check - allow direct access
+  // if (!isAuthenticated) {
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-background">
@@ -67,7 +68,7 @@ export default function Home() {
           {/* Welcome Section */}
           <div>
             <h1 className="text-4xl font-bold tracking-tight">
-              Welcome back, {user?.name?.split(" ")[0]}
+              Welcome back, {user?.name?.split(" ")[0] || "User"}
             </h1>
             <p className="text-muted-foreground mt-2">
               {!tokenStatus?.hasToken
