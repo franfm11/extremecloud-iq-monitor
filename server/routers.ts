@@ -104,6 +104,42 @@ export const appRouter = router({
     getRateLimitStatus: protectedProcedure.query(() => {
       return extremeCloudService.getRateLimitState();
     }),
+
+    /**
+     * Sync devices from XIQ to database
+     */
+    syncDevices: publicProcedure.mutation(async () => {
+      try {
+        const userId = 1;
+        const token = await getLatestApiToken(userId);
+        if (!token) throw new Error("No token");
+        if (token.expiresAt < new Date()) throw new Error("Expired");
+        const devicesData = await extremeCloudService.getDevices(token.accessToken, { page: 1, limit: 100 });
+        if (!devicesData?.data) return { success: true, count: 0 };
+        let count = 0;
+        for (const d of devicesData.data) {
+          try {
+            await upsertDevice({
+              userId,
+              deviceId: d.id,
+              name: d.name || d.id,
+              type: d.device_type || "Unknown",
+              ipAddress: d.ip_address || "",
+              macAddress: d.mac_address || "",
+              location: d.location || "",
+              status: d.connected ? "online" : "offline",
+              lastSeen: d.last_seen ? new Date(d.last_seen) : new Date(),
+              metadata: JSON.stringify(d),
+            });
+            count++;
+          } catch (e) {}
+        }
+        return { success: true, count };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Sync failed";
+        throw new Error(message);
+      }
+    }),
   }),
 
   // ============================================================================
@@ -118,429 +154,183 @@ export const appRouter = router({
       .input(
         z.object({
           page: z.number().int().positive().default(1),
-          limit: z.number().int().positive().max(100).default(20),
+          limit: z.number().int().positive().default(10),
         })
       )
-      .query(async ({ input, ctx }): Promise<any> => {
-        const token = await getLatestApiToken(ctx.user.id);
-        if (!token || token.expiresAt < new Date()) {
-          throw new Error("No valid authentication token. Please login first.");
-        }
-
-        // Fetch from API
-        const apiResponse = await extremeCloudService.getDevices(token.accessToken, {
-          page: input.page,
-          limit: input.limit,
-          views: "basic,detail,status",
-        });
-
-        if (apiResponse.error) {
-          await recordApiError(
-            ctx.user.id,
-            "/devices/list",
-            "API_ERROR",
-            apiResponse.message || "Failed to fetch devices",
-            apiResponse.statusCode
-          );
-          
-          const cachedDevices = await getUserDevices(ctx.user.id, input.limit, (input.page - 1) * input.limit);
-          return {
-            data: cachedDevices || [],
-            page: input.page,
-            limit: input.limit,
-            total: cachedDevices?.length || 0,
-            fromCache: true,
-            error: apiResponse.message || "API unavailable, showing cached data",
-          };
-        }
-
-        // Cache devices in database and record state changes
-        if (apiResponse.data && Array.isArray(apiResponse.data)) {
-          for (const device of apiResponse.data) {
-            await upsertDevice({
-              userId: ctx.user.id,
-              deviceId: String(device.id),
-              hostname: device.hostname,
-              macAddress: device.mac_address,
-              ipAddress: device.ip_address,
-              serialNumber: device.serial_number,
-              productType: device.product_type,
-              softwareVersion: device.software_version,
-              connected: device.connected ? 1 : 0,
-              lastConnectTime: device.last_connect_time ? new Date(device.last_connect_time) : null,
-              deviceFunction: device.device_function,
-              managedStatus: device.device_admin_state,
-              rawData: device,
-            });
-
-            // Record device state for availability tracking
-            const status = device.connected ? "up" : "down";
-            await recordDeviceStateChange(
-              ctx.user.id,
-              String(device.id),
-              status,
-              device.connected ? "Device is connected" : "Device is disconnected"
-            );
+      .query(async ({ input, ctx }) => {
+        try {
+          const token = await getLatestApiToken(ctx.user.id);
+          if (!token) {
+            return { devices: [], total: 0, page: input.page };
           }
-        }
 
-        return {
-          data: apiResponse.data || [],
-          page: apiResponse.page || input.page,
-          limit: apiResponse.limit || input.limit,
-          total: apiResponse.total_count || 0,
-        };
+          if (token.expiresAt < new Date()) {
+            return { devices: [], total: 0, page: input.page, error: "Token expired" };
+          }
+
+          const devices = await getUserDevices(ctx.user.id, input.page, input.limit);
+          return { devices, total: devices.length, page: input.page };
+        } catch (error) {
+          console.error("[Devices] Failed to list:", error);
+          return { devices: [], total: 0, page: input.page, error: "Failed to fetch devices" };
+        }
       }),
 
     /**
-     * Get single device details
+     * Get device details
      */
     detail: protectedProcedure
       .input(z.object({ deviceId: z.string() }))
       .query(async ({ input, ctx }) => {
-        const token = await getLatestApiToken(ctx.user.id);
-        if (!token || token.expiresAt < new Date()) {
-          throw new Error("No valid authentication token. Please login first.");
-        }
-
-        const apiResponse = await extremeCloudService.getDeviceDetail(token.accessToken, input.deviceId);
-
-        if (apiResponse.error) {
-          const cachedDevice = await getDeviceById(ctx.user.id, input.deviceId);
-          if (cachedDevice) {
-            return {
-              ...cachedDevice,
-              fromCache: true,
-              cacheWarning: apiResponse.message || "API unavailable, showing cached data",
-            };
+        try {
+          const device = await getDeviceById(ctx.user.id, input.deviceId);
+          if (!device) {
+            throw new Error("Device not found");
           }
-          throw new Error(apiResponse.message || "Failed to fetch device details");
+          return device;
+        } catch (error) {
+          console.error("[Devices] Failed to get detail:", error);
+          throw new Error("Failed to fetch device details");
         }
-
-        // Cache in database and record state
-        if (apiResponse.data) {
-          const device = apiResponse.data;
-          await upsertDevice({
-            userId: ctx.user.id,
-            deviceId: String(device.id),
-            hostname: device.hostname,
-            macAddress: device.mac_address,
-            ipAddress: device.ip_address,
-            serialNumber: device.serial_number,
-            productType: device.product_type,
-            softwareVersion: device.software_version,
-            connected: device.connected ? 1 : 0,
-            lastConnectTime: device.last_connect_time ? new Date(device.last_connect_time) : null,
-            deviceFunction: device.device_function,
-            managedStatus: device.device_admin_state,
-            rawData: device,
-          });
-
-          // Record device state for availability tracking
-          const status = device.connected ? "up" : "down";
-          await recordDeviceStateChange(
-            ctx.user.id,
-            String(device.id),
-            status,
-            device.connected ? "Device is connected" : "Device is disconnected"
-          );
-        }
-
-        if (apiResponse.data) {
-          return apiResponse.data;
-        }
-
-        const cachedDevice = await getDeviceById(ctx.user.id, input.deviceId);
-        if (cachedDevice) {
-          return {
-            ...cachedDevice,
-            fromCache: true,
-            cacheWarning: "API returned empty response, showing cached data",
-          };
-        }
-
-        throw new Error("Device not found and no cached data available");
-      }),
-
-    /**
-     * Get cached devices (fallback when API is unavailable)
-     */
-    getCached: protectedProcedure
-      .input(
-        z.object({
-          page: z.number().int().positive().default(1),
-          limit: z.number().int().positive().max(100).default(20),
-        })
-      )
-      .query(async ({ input, ctx }) => {
-        const offset = (input.page - 1) * input.limit;
-        const devices = await getUserDevices(ctx.user.id, input.limit, offset);
-        return devices;
       }),
   }),
 
   // ============================================================================
-  // CLIENTS MANAGEMENT
+  // CLIENT MANAGEMENT
   // ============================================================================
 
   clients: router({
     /**
-     * List connected clients
+     * List all clients for current user
      */
     list: protectedProcedure
       .input(
         z.object({
           page: z.number().int().positive().default(1),
-          limit: z.number().int().positive().max(100).default(20),
-          deviceId: z.string().optional(),
+          limit: z.number().int().positive().default(10),
         })
       )
       .query(async ({ input, ctx }) => {
-        const token = await getLatestApiToken(ctx.user.id);
-        if (!token || token.expiresAt < new Date()) {
-          throw new Error("No valid authentication token. Please login first.");
-        }
-
-        const apiResponse = await extremeCloudService.getClients(token.accessToken, {
-          page: input.page,
-          limit: input.limit,
-          deviceId: input.deviceId,
-        });
-
-        // If API error, return cached clients instead of throwing
-        if (apiResponse.error) {
-          console.warn("[Clients] API error fetching clients:", apiResponse.message);
-          // Try to return cached clients
-          const cachedClients = await getUserClients(ctx.user.id, undefined, input.limit, (input.page - 1) * input.limit);
-          return {
-            data: cachedClients,
-            page: input.page,
-            limit: input.limit,
-            total: cachedClients.length,
-            fromCache: true,
-            warning: "Showing cached data due to API error",
-          };
-        }
-
-        // Cache clients in database
-        if (apiResponse.data && Array.isArray(apiResponse.data)) {
-          for (const client of apiResponse.data) {
-            await upsertClient({
-              userId: ctx.user.id,
-              clientId: String(client.id),
-              deviceId: String(client.device_id),
-              hostname: client.hostname,
-              macAddress: client.mac_address,
-              ipAddress: client.ip_address,
-              ipv6Address: client.ipv6_address,
-              osType: client.os_type,
-              ssid: client.ssid,
-              vlan: client.vlan,
-              connected: client.connected ? 1 : 0,
-              connectionType: client.connection_type,
-              signalStrength: client.rssi,
-              healthScore: client.client_health,
-              rawData: client,
-            });
+        try {
+          const token = await getLatestApiToken(ctx.user.id);
+          if (!token) {
+            return { clients: [], total: 0 };
           }
+
+          if (token.expiresAt < new Date()) {
+            return { clients: [], total: 0, error: "Token expired" };
+          }
+
+          const clients = await getUserClients(ctx.user.id, input.page, input.limit);
+          return { clients, total: clients.length };
+        } catch (error) {
+          console.error("[Clients] Failed to list:", error);
+          return { clients: [], total: 0, error: "Failed to fetch clients" };
         }
-
-        return {
-          data: apiResponse.data || [],
-          page: apiResponse.page || input.page,
-          limit: apiResponse.limit || input.limit,
-          total: apiResponse.total_count || 0,
-        };
-      }),
-
-    /**
-     * Get cached clients
-     */
-    getCached: protectedProcedure
-      .input(
-        z.object({
-          page: z.number().int().positive().default(1),
-          limit: z.number().int().positive().max(100).default(20),
-          deviceId: z.string().optional(),
-        })
-      )
-      .query(async ({ input, ctx }) => {
-        const offset = (input.page - 1) * input.limit;
-        const clients = await getUserClients(ctx.user.id, input.deviceId, input.limit, offset);
-        return clients;
       }),
   }),
 
   // ============================================================================
-  // ALERTS MANAGEMENT
+  // ALERT MANAGEMENT
   // ============================================================================
 
   alerts: router({
     /**
-     * List alerts with optional filtering
+     * List all alerts for current user
      */
     list: protectedProcedure
       .input(
         z.object({
           page: z.number().int().positive().default(1),
-          limit: z.number().int().positive().max(100).default(20),
-          severity: z.enum(["critical", "high", "medium", "low", "info"]).optional(),
+          limit: z.number().int().positive().default(10),
         })
       )
       .query(async ({ input, ctx }) => {
-        const token = await getLatestApiToken(ctx.user.id);
-        if (!token || token.expiresAt < new Date()) {
-          throw new Error("No valid authentication token. Please login first.");
+        try {
+          const alerts = await getUserAlerts(ctx.user.id, input.page, input.limit);
+          return { alerts, total: alerts.length };
+        } catch (error) {
+          console.error("[Alerts] Failed to list:", error);
+          return { alerts: [], total: 0, error: "Failed to fetch alerts" };
         }
-
-        const apiResponse = await extremeCloudService.getAlerts(token.accessToken, {
-          page: input.page,
-          limit: input.limit,
-          severity: input.severity,
-        });
-
-        if (apiResponse.error) {
-          throw new Error(apiResponse.message || "Failed to fetch alerts");
-        }
-
-        // Cache alerts in database
-        if (apiResponse.data && Array.isArray(apiResponse.data)) {
-          for (const alert of apiResponse.data) {
-            await upsertAlert({
-              userId: ctx.user.id,
-              alertId: String(alert.id),
-              deviceId: alert.device_id ? String(alert.device_id) : null,
-              severity: alert.severity_name?.toLowerCase() || "info",
-              category: alert.category,
-              title: alert.title,
-              description: alert.description,
-              timestamp: new Date(alert.timestamp),
-              acknowledged: alert.acknowledged ? 1 : 0,
-              rawData: alert,
-            });
-          }
-        }
-
-        return {
-          data: apiResponse.data || [],
-          page: apiResponse.page || input.page,
-          limit: apiResponse.limit || input.limit,
-          total: apiResponse.total_count || 0,
-        };
       }),
 
     /**
-     * Get cached alerts
-     */
-    getCached: protectedProcedure
-      .input(
-        z.object({
-          page: z.number().int().positive().default(1),
-          limit: z.number().int().positive().max(100).default(20),
-          severity: z.enum(["critical", "high", "medium", "low", "info"]).optional(),
-        })
-      )
-      .query(async ({ input, ctx }) => {
-        const offset = (input.page - 1) * input.limit;
-        const alerts = await getUserAlerts(ctx.user.id, input.severity, input.limit, offset);
-        return alerts;
-      }),
-
-    /**
-     * Acknowledge an alert
+     * Acknowledge alert
      */
     acknowledge: protectedProcedure
       .input(z.object({ alertId: z.number() }))
       .mutation(async ({ input, ctx }) => {
-        await acknowledgeAlert(input.alertId, ctx.user.email || ctx.user.name || "Unknown");
-        return { success: true };
+        try {
+          await acknowledgeAlert(input.alertId, ctx.user.id);
+          return { success: true };
+        } catch (error) {
+          console.error("[Alerts] Failed to acknowledge:", error);
+          throw new Error("Failed to acknowledge alert");
+        }
       }),
   }),
 
   // ============================================================================
-  // CLI DIAGNOSTICS
+  // CLI COMMANDS
   // ============================================================================
 
   cli: router({
     /**
-     * Execute CLI commands on device
+     * List CLI commands
      */
-    execute: protectedProcedure
+    list: protectedProcedure
       .input(
         z.object({
-          deviceId: z.string(),
-          commands: z.array(z.string()).min(1),
-          async: z.boolean().default(false),
+          page: z.number().int().positive().default(1),
+          limit: z.number().int().positive().default(10),
         })
       )
-      .mutation(async ({ input, ctx }) => {
-        const token = await getLatestApiToken(ctx.user.id);
-        if (!token || token.expiresAt < new Date()) {
-          throw new Error("No valid authentication token. Please login first.");
-        }
-
-        // Create command record
-        const commandRecord = await createCliCommand({
-          userId: ctx.user.id,
-          deviceId: input.deviceId,
-          command: input.commands.join("; "),
-          status: "pending",
-        });
-
+      .query(async ({ input, ctx }) => {
         try {
-          const apiResponse = await extremeCloudService.executeCli(
-            token.accessToken,
-            [parseInt(input.deviceId, 10)],
-            input.commands,
-            { async: input.async }
-          );
-
-          if (apiResponse.error) {
-            await updateCliCommand(commandRecord.id, {
-              status: "failed",
-              errorMessage: apiResponse.message,
-            });
-            throw new Error(apiResponse.message || "Failed to execute CLI commands");
-          }
-
-          // Update command with output
-          const output = apiResponse.device_cli_outputs ? JSON.stringify(apiResponse.device_cli_outputs) : "";
-          await updateCliCommand(commandRecord.id, {
-            status: "success",
-            output,
-            completedAt: new Date(),
-          });
-
-          return {
-            success: true,
-            commandId: commandRecord.id,
-            output: apiResponse.device_cli_outputs,
-          };
+          const commands = await getUserCliCommands(ctx.user.id, input.page, input.limit);
+          return { commands, total: commands.length };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Command execution failed";
-          await updateCliCommand(commandRecord.id, {
-            status: "failed",
-            errorMessage: message,
-          });
-          throw error;
+          console.error("[CLI] Failed to list:", error);
+          return { commands: [], total: 0, error: "Failed to fetch commands" };
         }
       }),
 
     /**
-     * Get command history
+     * Create CLI command
      */
-    history: protectedProcedure
+    create: protectedProcedure
       .input(
         z.object({
-          deviceId: z.string().optional(),
-          limit: z.number().int().positive().max(50).default(20),
+          deviceId: z.string(),
+          command: z.string(),
+          description: z.string().optional(),
         })
       )
-      .query(async ({ input, ctx }) => {
-        return await getUserCliCommands(ctx.user.id, input.deviceId, input.limit);
+      .mutation(async ({ input, ctx }) => {
+        try {
+          const result = await createCliCommand({
+            userId: ctx.user.id,
+            deviceId: input.deviceId,
+            command: input.command,
+            description: input.description || "",
+            status: "pending",
+            output: "",
+            createdAt: new Date(),
+          });
+          return { success: true, id: result };
+        } catch (error) {
+          console.error("[CLI] Failed to create:", error);
+          throw new Error("Failed to create command");
+        }
       }),
-   }),
+  }),
+
+  // ============================================================================
+  // AVAILABILITY MONITORING
+  // ============================================================================
 
   availability: availabilityRouter,
 });
+
 export type AppRouter = typeof appRouter;
