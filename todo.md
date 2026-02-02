@@ -146,3 +146,4 @@
 
 ## Current Bugs (Active)
 - [x] Fix "Failed to fetch clients" error on /availability/:deviceId page - added graceful error handling with cached fallback
+- [x] Fix PDF/CSV export error - use generateReportData to create correct ReportData format for export services

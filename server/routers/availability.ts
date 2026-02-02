@@ -117,18 +117,20 @@ export const availabilityRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        const report = await getAvailabilityReport(
+        // Use the report export service to generate the report data
+        const reportExportService = await import("../services/report-export.service");
+        const reportData = await reportExportService.generateReportData(
           ctx.user.id,
           input.deviceId,
-          input.period as PeriodType
+          input.period as "5m" | "1h" | "24h" | "7d" | "30d",
+          99.5
         );
 
-        if (!report) {
+        if (!reportData) {
           throw new Error("Report not found");
         }
 
-        const reportExportService = await import("../services/report-export.service");
-        const pdfBuffer = await reportExportService.exportToPDF([report as any]);
+        const pdfBuffer = await reportExportService.exportToPDF([reportData]);
         const base64 = pdfBuffer.toString("base64");
         const url = `data:application/pdf;base64,${base64}`;
 
@@ -151,18 +153,20 @@ export const availabilityRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       try {
-        const report = await getAvailabilityReport(
+        // Use the report export service to generate the report data
+        const reportExportService = await import("../services/report-export.service");
+        const reportData = await reportExportService.generateReportData(
           ctx.user.id,
           input.deviceId,
-          input.period as PeriodType
+          input.period as "5m" | "1h" | "24h" | "7d" | "30d",
+          99.5
         );
 
-        if (!report) {
+        if (!reportData) {
           throw new Error("Report not found");
         }
 
-        const reportExportService = await import("../services/report-export.service");
-        const csv = reportExportService.exportToCSV([report as any]);
+        const csv = reportExportService.exportToCSV([reportData]);
         const url = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
 
         return { url };
