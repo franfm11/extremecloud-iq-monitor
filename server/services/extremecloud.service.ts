@@ -63,8 +63,12 @@ class ExtremeCloudService {
 
   /**
    * Login to ExtremeCloud IQ API
+   * Tries multiple authentication endpoints for compatibility
    */
   async login(username: string, password: string): Promise<{ token: string; expiresIn: number }> {
+    const errors: string[] = [];
+
+    // Try endpoint 1: Standard /login endpoint
     try {
       const response = await this.client.post<LoginResponse>("/login", {
         username,
@@ -75,13 +79,53 @@ class ExtremeCloudService {
         token: response.data.access_token,
         expiresIn: response.data.expires_in,
       };
-    } catch (error) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status === 400) {
-        throw new Error("Invalid credentials");
-      }
-      throw new Error(`Login failed: ${axiosError.message}`);
+    } catch (err) {
+      errors.push(`Standard login failed: ${(err as Error).message}`);
     }
+
+    // Try endpoint 2: OAuth2 token endpoint
+    try {
+      const params = new URLSearchParams();
+      params.append("grant_type", "password");
+      params.append("username", username);
+      params.append("password", password);
+      params.append("client_id", "XIQ-API");
+
+      const response = await this.client.post<LoginResponse>(
+        "/v1/oauth2/token",
+        params,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+      return {
+        token: response.data.access_token,
+        expiresIn: response.data.expires_in || 3600,
+      };
+    } catch (err) {
+      errors.push(`OAuth2 login failed: ${(err as Error).message}`);
+    }
+
+    // Try endpoint 3: /v1/auth/login endpoint
+    try {
+      const response = await this.client.post<LoginResponse>("/v1/auth/login", {
+        username,
+        password,
+      });
+
+      return {
+        token: response.data.access_token,
+        expiresIn: response.data.expires_in || 3600,
+      };
+    } catch (err) {
+      errors.push(`V1 auth login failed: ${(err as Error).message}`);
+    }
+
+    // All attempts failed
+    throw new Error(`Login failed. Attempted endpoints: ${errors.join(" | ")}`);
   }
 
   /**
