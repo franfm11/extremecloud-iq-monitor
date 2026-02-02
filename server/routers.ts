@@ -47,7 +47,7 @@ export const appRouter = router({
     /**
      * Login to ExtremeCloud IQ API and store token
      */
-    login: protectedProcedure
+    login: publicProcedure
       .input(
         z.object({
           username: z.string().email("Invalid email"),
@@ -58,10 +58,13 @@ export const appRouter = router({
         try {
           const result = await extremeCloudService.login(input.username, input.password);
 
+          // For public login, use a test user ID (1)
+          const userId = ctx.user?.id || 1;
+
           // Store token in database
           const expiresAt = new Date(Date.now() + result.expiresIn * 1000);
           await saveApiToken({
-            userId: ctx.user.id,
+            userId,
             accessToken: result.token,
             tokenType: "Bearer",
             expiresAt,
