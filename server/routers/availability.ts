@@ -104,4 +104,71 @@ export const availabilityRouter = router({
         throw new Error("Failed to fetch device availability statistics");
       }
     }),
+
+  /**
+   * Export availability report to PDF
+   */
+  exportReportPDF: protectedProcedure
+    .input(
+      z.object({
+        deviceId: z.string(),
+        period: z.enum(["5m", "1h", "24h", "7d", "30d"]).default("24h"),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const report = await getAvailabilityReport(
+          ctx.user.id,
+          input.deviceId,
+          input.period as PeriodType
+        );
+
+        if (!report) {
+          throw new Error("Report not found");
+        }
+
+        const reportExportService = await import("../services/report-export.service");
+        const pdfBuffer = await reportExportService.exportToPDF([report as any]);
+        const base64 = pdfBuffer.toString("base64");
+        const url = `data:application/pdf;base64,${base64}`;
+
+        return { url };
+      } catch (error) {
+        console.error("[Availability] Failed to export PDF:", error);
+        throw new Error("Failed to export report to PDF");
+      }
+    }),
+
+  /**
+   * Export availability report to CSV
+   */
+  exportReportCSV: protectedProcedure
+    .input(
+      z.object({
+        deviceId: z.string(),
+        period: z.enum(["5m", "1h", "24h", "7d", "30d"]).default("24h"),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const report = await getAvailabilityReport(
+          ctx.user.id,
+          input.deviceId,
+          input.period as PeriodType
+        );
+
+        if (!report) {
+          throw new Error("Report not found");
+        }
+
+        const reportExportService = await import("../services/report-export.service");
+        const csv = reportExportService.exportToCSV([report as any]);
+        const url = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+
+        return { url };
+      } catch (error) {
+        console.error("[Availability] Failed to export CSV:", error);
+        throw new Error("Failed to export report to CSV");
+      }
+    }),
 });

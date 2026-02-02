@@ -137,8 +137,11 @@
 - [x] Create report generation service for PDF export
 - [x] Add tRPC endpoints for CSV export
 - [x] Add tRPC endpoints for PDF export
-- [ ] Build export UI button and dialog
+- [x] Build export UI button and dialog
 - [x] Test export functionality (all 71 tests passing)
+- [x] Add single-device export endpoints to availability router
+- [x] Implement export buttons in Availability Report page
+- [x] Add tests for export functionality (16 new tests passing)
 
 
 ## Current Bugs (Active)

@@ -21,12 +21,15 @@ import {
   TrendingDown,
   Clock,
   RefreshCw,
+  Download,
+  FileText,
 } from "lucide-react";
 
 export default function Availability() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>("24h");
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch availability reports
   const { data: reports, isLoading, error, refetch } = trpc.availability.getReports.useQuery(
@@ -39,6 +42,49 @@ export default function Availability() {
     { deviceId: id || "", limit: 10 },
     { enabled: !!id }
   );
+
+  // Export mutations
+  const { mutate: exportPDF } = trpc.availability.exportReportPDF.useMutation({
+    onSuccess: (data: { url: string }) => {
+      const url = data.url;
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `availability-report-${id}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setIsExporting(false);
+    },
+    onError: () => {
+      setIsExporting(false);
+    },
+  });
+
+  const { mutate: exportCSV } = trpc.availability.exportReportCSV.useMutation({
+    onSuccess: (data: { url: string }) => {
+      const url = data.url;
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `availability-report-${id}-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setIsExporting(false);
+    },
+    onError: () => {
+      setIsExporting(false);
+    },
+  });
+
+  const handleExportPDF = () => {
+    setIsExporting(true);
+    exportPDF({ deviceId: id || "", period: selectedPeriod });
+  };
+
+  const handleExportCSV = () => {
+    setIsExporting(true);
+    exportCSV({ deviceId: id || "", period: selectedPeriod });
+  };
 
   const currentReport = useMemo(() => {
     return reports?.[selectedPeriod];
@@ -147,15 +193,38 @@ export default function Availability() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                     <CardTitle>Availability Metrics</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => refetch()}
-                      className="gap-2"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Refresh
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportPDF}
+                        disabled={isExporting}
+                        className="gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        {isExporting ? "Exporting..." : "Export PDF"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportCSV}
+                        disabled={isExporting}
+                        className="gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        {isExporting ? "Exporting..." : "Export CSV"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => refetch()}
+                        disabled={isExporting}
+                        className="gap-2"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Refresh
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Main Indicator */}
