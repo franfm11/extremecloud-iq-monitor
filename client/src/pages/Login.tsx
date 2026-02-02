@@ -27,6 +27,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // For testing: allow any username/password
     if (!username || !password) {
       toast.error("Please enter both username and password");
       return;
@@ -34,10 +35,9 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      await loginMutation.mutateAsync({
-        username,
-        password,
-      });
+      // Testing mode: skip actual API call and redirect to dashboard
+      toast.success("Successfully logged in (Testing Mode)");
+      navigate("/devices");
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +64,7 @@ export default function Login() {
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
             <CardDescription>
-              Enter your ExtremeCloud IQ credentials to access the monitoring dashboard
+              Enter any credentials to access the monitoring dashboard (Testing Mode)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -72,12 +72,12 @@ export default function Login() {
               {/* Username */}
               <div className="space-y-2">
                 <Label htmlFor="username" className="text-slate-200">
-                  Email Address
+                  Username (any value for testing)
                 </Label>
                 <Input
                   id="username"
-                  type="email"
-                  placeholder="admin@company.com"
+                  type="text"
+                  placeholder="test@example.com"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isLoading}
@@ -88,12 +88,12 @@ export default function Login() {
               {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-slate-200">
-                  Password
+                  Password (any value for testing)
                 </Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="password123"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
@@ -102,12 +102,12 @@ export default function Login() {
               </div>
 
               {/* Info Box */}
-              <div className="bg-blue-950 border border-blue-700 rounded-lg p-3 flex gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-200">
-                  <p className="font-medium mb-1">API Credentials Required</p>
+              <div className="bg-yellow-950 border border-yellow-700 rounded-lg p-3 flex gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-yellow-200">
+                  <p className="font-medium mb-1">Testing Mode</p>
                   <p className="text-xs">
-                    Provide your ExtremeCloud IQ login credentials. Your token will be securely stored and used only for API requests.
+                    Enter any username and password to access the dashboard. This is for testing purposes only.
                   </p>
                 </div>
               </div>
