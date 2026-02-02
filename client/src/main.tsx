@@ -18,7 +18,9 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  window.location.href = getLoginUrl();
+  // Testing mode: disable OAuth redirect
+  // window.location.href = getLoginUrl();
+  console.warn("[Auth] Unauthorized error (OAuth redirect disabled for testing)", error);
 };
 
 queryClient.getQueryCache().subscribe(event => {
