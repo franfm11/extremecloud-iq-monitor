@@ -27,7 +27,6 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // For testing: allow any username/password
     if (!username || !password) {
       toast.error("Please enter both username and password");
       return;
@@ -35,9 +34,11 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      // Testing mode: skip actual API call and redirect to dashboard
-      toast.success("Successfully logged in (Testing Mode)");
-      navigate("/devices");
+      // Call the actual XIQ login endpoint
+      await loginMutation.mutateAsync({
+        username,
+        password,
+      });
     } finally {
       setIsLoading(false);
     }
