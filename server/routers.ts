@@ -308,7 +308,7 @@ export const appRouter = router({
         if (apiResponse.error) {
           console.warn("[Clients] API error fetching clients:", apiResponse.message);
           // Try to return cached clients
-          const cachedClients = await getUserClients(ctx.user.id, input.page, input.limit);
+          const cachedClients = await getUserClients(ctx.user.id, undefined, input.limit, (input.page - 1) * input.limit);
           return {
             data: cachedClients,
             page: input.page,
