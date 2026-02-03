@@ -46,13 +46,13 @@ export default function Diagnostics() {
   });
 
   // Fetch command history
-  const { data: historyData, refetch: refetchHistory } = trpc.cli.history.useQuery({
+  const { data: historyData, refetch: refetchHistory } = trpc.cli.list.useQuery({
     deviceId: deviceId || undefined,
     limit: 20,
   });
 
   // Execute CLI command
-  const executeMutation = trpc.cli.execute.useMutation({
+  const executeMutation = trpc.cli.create.useMutation({
     onSuccess: () => {
       toast.success("Command executed successfully");
       setCommand("");
@@ -76,8 +76,7 @@ export default function Diagnostics() {
 
     await executeMutation.mutateAsync({
       deviceId,
-      commands: [command],
-      async: isAsync,
+      command,
     });
   };
 
@@ -269,7 +268,7 @@ export default function Diagnostics() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {historyData.map((cmd: CliCommand) => (
+                  {historyData?.commands?.map((cmd: CliCommand) => (
                     <div
                       key={cmd.id}
                       className="border border-border rounded-lg p-3 space-y-2 hover:bg-accent/50 transition-colors"

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -19,45 +18,41 @@ export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
 
-  // Skip authentication check - allow direct access
-  // useEffect(() => {
-  //   if (!isAuthenticated) {
-  //     navigate("/login");
-  //   }
-  // }, [isAuthenticated, navigate]);
-
   // Check if user has valid token
   const { data: tokenStatus } = trpc.extremecloud.hasValidToken.useQuery();
 
+  // Sync devices mutation
+  const { mutate: syncDevices, isPending: isSyncing } = trpc.extremecloud.syncDevices.useMutation({
+    onSuccess: () => {
+      devicesQuery.refetch();
+    },
+  });
+
   // Fetch dashboard data
-  const { data: devicesData } = trpc.devices.getCached.useQuery({
+  const devicesQuery = trpc.devices.list.useQuery({
+    page: 1,
+    limit: 5,
+  });
+  const { data: devicesData } = devicesQuery;
+
+  const { data: alertsData } = trpc.alerts.list.useQuery({
     page: 1,
     limit: 5,
   });
 
-  const { data: alertsData } = trpc.alerts.getCached.useQuery({
+  const { data: clientsData } = trpc.clients.list.useQuery({
     page: 1,
     limit: 5,
   });
 
-  const { data: clientsData } = trpc.clients.getCached.useQuery({
-    page: 1,
-    limit: 5,
-  });
+  const devices = devicesData?.devices || [];
+  const alerts = alertsData?.alerts || [];
+  const clients = clientsData?.clients || [];
 
-  const devices = devicesData || [];
-  const alerts = alertsData || [];
-  const clients = clientsData || [];
-
-  const onlineDevices = devices.filter((d: any) => d.connected).length;
-  const offlineDevices = devices.filter((d: any) => !d.connected).length;
+  const onlineDevices = devices.filter((d: any) => d.connected === 1).length;
+  const offlineDevices = devices.filter((d: any) => d.connected === 0).length;
   const criticalAlerts = alerts.filter((a: any) => a.severity === "critical").length;
-  const connectedClients = clients.filter((c: any) => c.connected).length;
-
-  // Skip authentication check - allow direct access
-  // if (!isAuthenticated) {
-  //   return null;
-  // }
+  const connectedClients = clients.filter((c: any) => c.connected === 1).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,6 +97,21 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Sync Devices Button */}
+          {tokenStatus?.hasToken && !tokenStatus?.isExpired && (
+            <div className="flex justify-end">
+              <Button
+                onClick={() => syncDevices()}
+                disabled={isSyncing}
+                variant="outline"
+                className="gap-2"
+              >
+                <Zap className="w-4 h-4" />
+                {isSyncing ? "Syncing..." : "Sync Devices"}
+              </Button>
+            </div>
           )}
 
           {/* Stats Grid */}
@@ -181,24 +191,25 @@ export default function Home() {
                 </CardHeader>
                 <CardContent>
                   {devices.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No devices available</p>
+                    <p className="text-muted-foreground">No devices available</p>
                   ) : (
-                    <div className="space-y-3">
-                      {devices.slice(0, 5).map((device: any) => (
-                        <div
-                          key={device.id}
-                          className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{device.hostname || "Unknown"}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {device.ipAddress} · {device.productType}
-                            </p>
+                    <div className="space-y-4">
+                      {devices.map((device: any) => (
+                        <div key={device.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <DeviceStatusBadge connected={device.connected} />
+                            <div>
+                              <p className="font-medium">{device.hostname || device.deviceId}</p>
+                              <p className="text-sm text-muted-foreground">{device.productType || "Unknown"}</p>
+                            </div>
                           </div>
-                          <DeviceStatusBadge
-                            status={device.connected ? "online" : "offline"}
-                            lastConnectTime={device.lastConnectTime}
-                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/devices/${device.deviceId}`)}
+                          >
+                            View
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -223,31 +234,15 @@ export default function Home() {
                 </CardHeader>
                 <CardContent>
                   {alerts.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No alerts</p>
+                    <p className="text-muted-foreground">No alerts</p>
                   ) : (
-                    <div className="space-y-3">
-                      {alerts.slice(0, 5).map((alert: any) => (
-                        <div
-                          key={alert.id}
-                          className="flex items-start justify-between p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{alert.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {alert.category} · {new Date(alert.timestamp).toLocaleString()}
-                            </p>
+                    <div className="space-y-2">
+                      {alerts.map((alert: any) => (
+                        <div key={alert.id} className="flex items-center justify-between p-2 border-l-4 border-red-500 bg-red-50 dark:bg-red-950 pl-3 rounded">
+                          <div>
+                            <p className="font-medium text-sm">{alert.message}</p>
+                            <p className="text-xs text-muted-foreground">{alert.timestamp}</p>
                           </div>
-                          <span
-                            className={`text-xs font-medium px-2 py-1 rounded ${
-                              alert.severity === "critical"
-                                ? "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300"
-                                : alert.severity === "high"
-                                ? "bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300"
-                                : "bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-300"
-                            }`}
-                          >
-                            {alert.severity}
-                          </span>
                         </div>
                       ))}
                     </div>

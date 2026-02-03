@@ -122,14 +122,13 @@ export const appRouter = router({
             await upsertDevice({
               userId,
               deviceId: d.id,
-              name: d.name || d.id,
-              type: d.device_type || "Unknown",
+              hostname: d.name || d.id,
+              productType: d.device_type || "Unknown",
               ipAddress: d.ip_address || "",
               macAddress: d.mac_address || "",
-              location: d.location || "",
-              status: d.connected ? "online" : "offline",
-              lastSeen: d.last_seen ? new Date(d.last_seen) : new Date(),
-              metadata: JSON.stringify(d),
+              connected: d.connected ? 1 : 0,
+              lastConnectTime: d.last_seen ? new Date(d.last_seen) : new Date(),
+              rawData: d,
             });
             count++;
           } catch (e) {}
@@ -203,7 +202,7 @@ export const appRouter = router({
     /**
      * List all clients for current user
      */
-    list: protectedProcedure
+     list: protectedProcedure
       .input(
         z.object({
           page: z.number().int().positive().default(1),
@@ -216,12 +215,11 @@ export const appRouter = router({
           if (!token) {
             return { clients: [], total: 0 };
           }
-
           if (token.expiresAt < new Date()) {
             return { clients: [], total: 0, error: "Token expired" };
           }
-
-          const clients = await getUserClients(ctx.user.id, input.page, input.limit);
+          const offset = (input.page - 1) * input.limit;
+          const clients = await getUserClients(ctx.user.id, undefined, input.limit, offset);
           return { clients, total: clients.length };
         } catch (error) {
           console.error("[Clients] Failed to list:", error);
@@ -247,7 +245,8 @@ export const appRouter = router({
       )
       .query(async ({ input, ctx }) => {
         try {
-          const alerts = await getUserAlerts(ctx.user.id, input.page, input.limit);
+          const offset = (input.page - 1) * input.limit;
+          const alerts = await getUserAlerts(ctx.user.id, undefined, input.limit, offset);
           return { alerts, total: alerts.length };
         } catch (error) {
           console.error("[Alerts] Failed to list:", error);
@@ -262,7 +261,7 @@ export const appRouter = router({
       .input(z.object({ alertId: z.number() }))
       .mutation(async ({ input, ctx }) => {
         try {
-          await acknowledgeAlert(input.alertId, ctx.user.id);
+          await acknowledgeAlert(input.alertId, String(ctx.user.id));
           return { success: true };
         } catch (error) {
           console.error("[Alerts] Failed to acknowledge:", error);
@@ -288,7 +287,8 @@ export const appRouter = router({
       )
       .query(async ({ input, ctx }) => {
         try {
-          const commands = await getUserCliCommands(ctx.user.id, input.page, input.limit);
+          const offset = (input.page - 1) * input.limit;
+          const commands = await getUserCliCommands(ctx.user.id, undefined, input.limit, offset);
           return { commands, total: commands.length };
         } catch (error) {
           console.error("[CLI] Failed to list:", error);
@@ -313,7 +313,6 @@ export const appRouter = router({
             userId: ctx.user.id,
             deviceId: input.deviceId,
             command: input.command,
-            description: input.description || "",
             status: "pending",
             output: "",
             createdAt: new Date(),
