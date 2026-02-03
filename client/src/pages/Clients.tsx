@@ -47,7 +47,8 @@ export default function Clients() {
   });
 
   const isLoading = isApiLoading || isCacheLoading;
-  const clients = apiData?.data || cachedData || [];
+  
+  const clients = api?.data || cachedData || [];
 
   const filteredClients = clients.filter((client: Client) =>
     client.hostname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -67,6 +68,7 @@ export default function Clients() {
 
   const getHealthColor = (health?: number) => {
     if (!health) return "text-muted-foreground";
+    
     if (health >= 80) return "text-green-600 dark:text-green-400";
     if (health >= 60) return "text-yellow-600 dark:text-yellow-400";
     return "text-red-600 dark:text-red-400";
@@ -75,6 +77,7 @@ export default function Clients() {
   return (
     <div className="min-h-screen bg-background">
       <DashboardNav />
+
 
       <main className="lg:ml-64 p-4 lg:p-8">
         <div className="max-w-7xl mx-auto space-y-6">
