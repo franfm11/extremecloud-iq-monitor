@@ -197,7 +197,7 @@ export default function Home() {
                       {devices.map((device: any) => (
                         <div key={device.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center gap-3">
-                            <DeviceStatusBadge connected={device.connected} />
+                            <DeviceStatusBadge status={device.connected === 1 ? "online" : "offline"} lastConnectTime={device.lastConnectTime} />
                             <div>
                               <p className="font-medium">{device.hostname || device.deviceId}</p>
                               <p className="text-sm text-muted-foreground">{device.productType || "Unknown"}</p>

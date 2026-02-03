@@ -40,14 +40,14 @@ export default function Diagnostics() {
   const [selectedCommand, setSelectedCommand] = useState("ping");
 
   // Fetch devices for selection
-  const { data: devicesData } = trpc.devices.getCached.useQuery({
+  const { data: devicesData } = trpc.devices.list.useQuery({
     page: 1,
     limit: 100,
   });
 
   // Fetch command history
   const { data: historyData, refetch: refetchHistory } = trpc.cli.list.useQuery({
-    deviceId: deviceId || undefined,
+    page: 1,
     limit: 20,
   });
 
@@ -136,7 +136,7 @@ export default function Diagnostics() {
                         <SelectValue placeholder="Choose a device..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {devicesData?.map((device: any) => (
+                        {devices.map((device: any) => (
                           <SelectItem key={device.id} value={String(device.deviceId)}>
                             {device.hostname || device.ipAddress || `Device ${device.id}`}
                           </SelectItem>
@@ -261,7 +261,7 @@ export default function Diagnostics() {
           </div>
 
           {/* Command History */}
-          {historyData && historyData.length > 0 && (
+          {historyData && historyData?.commands?.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Command History</CardTitle>

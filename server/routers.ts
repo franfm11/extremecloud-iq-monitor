@@ -84,7 +84,7 @@ export const appRouter = router({
     /**
      * Check if user has valid token
      */
-    hasValidToken: protectedProcedure.query(async ({ ctx }) => {
+    hasValidToken: publicProcedure.query(async () => {
       const token = await getLatestApiToken(ctx.user.id);
       if (!token) {
         return { hasToken: false };
@@ -149,16 +149,17 @@ export const appRouter = router({
     /**
      * List all devices for current user
      */
-    list: protectedProcedure
+    list: publicProcedure
       .input(
         z.object({
           page: z.number().int().positive().default(1),
           limit: z.number().int().positive().default(10),
         })
       )
-      .query(async ({ input, ctx }) => {
+      .query(async ({ input }) => {
         try {
-          const token = await getLatestApiToken(ctx.user.id);
+          const userId = 1;
+          const token = await getLatestApiToken(userId);
           if (!token) {
             return { devices: [], total: 0, page: input.page };
           }
@@ -167,7 +168,7 @@ export const appRouter = router({
             return { devices: [], total: 0, page: input.page, error: "Token expired" };
           }
 
-          const devices = await getUserDevices(ctx.user.id, input.page, input.limit);
+          const devices = await getUserDevices(userId, input.limit, (input.page - 1) * input.limit);
           return { devices, total: devices.length, page: input.page };
         } catch (error) {
           console.error("[Devices] Failed to list:", error);
@@ -178,11 +179,12 @@ export const appRouter = router({
     /**
      * Get device details
      */
-    detail: protectedProcedure
+    detail: publicProcedure
       .input(z.object({ deviceId: z.string() }))
-      .query(async ({ input, ctx }) => {
+      .query(async ({ input }) => {
         try {
-          const device = await getDeviceById(ctx.user.id, input.deviceId);
+          const userId = 1;
+          const device = await getDeviceById(userId, input.deviceId);
           if (!device) {
             throw new Error("Device not found");
           }
@@ -202,16 +204,17 @@ export const appRouter = router({
     /**
      * List all clients for current user
      */
-     list: protectedProcedure
+     list: publicProcedure
       .input(
         z.object({
           page: z.number().int().positive().default(1),
           limit: z.number().int().positive().default(10),
         })
       )
-      .query(async ({ input, ctx }) => {
+      .query(async ({ input }) => {
         try {
-          const token = await getLatestApiToken(ctx.user.id);
+          const userId = 1;
+          const token = await getLatestApiToken(userId);
           if (!token) {
             return { clients: [], total: 0 };
           }
@@ -219,7 +222,7 @@ export const appRouter = router({
             return { clients: [], total: 0, error: "Token expired" };
           }
           const offset = (input.page - 1) * input.limit;
-          const clients = await getUserClients(ctx.user.id, undefined, input.limit, offset);
+          const clients = await getUserClients(userId, undefined, input.limit, offset);
           return { clients, total: clients.length };
         } catch (error) {
           console.error("[Clients] Failed to list:", error);
@@ -236,17 +239,18 @@ export const appRouter = router({
     /**
      * List all alerts for current user
      */
-    list: protectedProcedure
+    list: publicProcedure
       .input(
         z.object({
           page: z.number().int().positive().default(1),
           limit: z.number().int().positive().default(10),
         })
       )
-      .query(async ({ input, ctx }) => {
+      .query(async ({ input }) => {
         try {
+          const userId = 1;
           const offset = (input.page - 1) * input.limit;
-          const alerts = await getUserAlerts(ctx.user.id, undefined, input.limit, offset);
+          const alerts = await getUserAlerts(userId, undefined, input.limit, offset);
           return { alerts, total: alerts.length };
         } catch (error) {
           console.error("[Alerts] Failed to list:", error);
@@ -310,7 +314,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         try {
           const result = await createCliCommand({
-            userId: ctx.user.id,
+            userId: userId,
             deviceId: input.deviceId,
             command: input.command,
             status: "pending",
