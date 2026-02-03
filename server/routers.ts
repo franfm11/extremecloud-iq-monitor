@@ -120,6 +120,10 @@ export const appRouter = router({
         if (!token) throw new Error("No token");
         if (token.expiresAt < new Date()) throw new Error("Expired");
         const devicesData = await extremeCloudService.getDevices(token.accessToken, { page: 1, limit: 100 });
+        console.log("[DEBUG] API Response:", JSON.stringify(devicesData, null, 2));
+        if (devicesData?.data && devicesData.data.length > 0) {
+          console.log("[DEBUG] First device structure:", JSON.stringify(devicesData.data[0], null, 2));
+        }
         if (!devicesData?.data) return { success: true, count: 0 };
         let count = 0;
         for (const d of devicesData.data) {

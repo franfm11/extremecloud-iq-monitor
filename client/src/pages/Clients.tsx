@@ -41,7 +41,7 @@ export default function Clients() {
   });
 
   // Fallback to cached clients
-  const { data: cachedData, isLoading: isCacheLoading } = trpc.clients.getCached.useQuery({
+  const { data: cachedData, isLoading: isCacheLoading } = trpc.clients.list.useQuery({
     page,
     limit,
   });

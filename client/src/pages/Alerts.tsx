@@ -54,7 +54,7 @@ export default function Alerts() {
   });
 
   // Fallback to cached alerts
-  const { data: cachedData, isLoading: isCacheLoading } = trpc.alerts.getCached.useQuery({
+  const { data: cachedData, isLoading: isCacheLoading } = trpc.alerts.list.useQuery({
     page,
     limit,
     severity: selectedSeverity as any,

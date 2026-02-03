@@ -47,7 +47,7 @@ export default function Devices() {
   });
 
   // Fallback to cached devices if API fails
-  const { data: cachedData, isLoading: isCacheLoading } = trpc.devices.getCached.useQuery({
+  const { data: cachedData, isLoading: isCacheLoading } = trpc.devices.list.useQuery({
     page,
     limit,
   });
