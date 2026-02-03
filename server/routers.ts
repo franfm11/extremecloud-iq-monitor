@@ -85,17 +85,22 @@ export const appRouter = router({
      * Check if user has valid token
      */
     hasValidToken: publicProcedure.query(async () => {
-      const token = await getLatestApiToken(ctx.user.id);
-      if (!token) {
+      try {
+        const userId = 1;
+        const token = await getLatestApiToken(userId);
+        if (!token) {
+          return { hasToken: false };
+        }
+        const isExpired = token.expiresAt < new Date();
+        return {
+          hasToken: true,
+          isExpired,
+          expiresAt: token.expiresAt.toISOString(),
+        };
+      } catch (error) {
+        console.error("[Auth] Failed to check token:", error);
         return { hasToken: false };
       }
-
-      const isExpired = token.expiresAt < new Date();
-      return {
-        hasToken: true,
-        isExpired,
-        expiresAt: token.expiresAt.toISOString(),
-      };
     }),
 
     /**
@@ -314,7 +319,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         try {
           const result = await createCliCommand({
-            userId: userId,
+            userId: ctx.user.id,
             deviceId: input.deviceId,
             command: input.command,
             status: "pending",
